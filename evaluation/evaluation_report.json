@@ -1,0 +1,159 @@
+{
+  "sentiment_model_evaluation": {
+    "sample_size": 30,
+    "sampling_seed": 6201,
+    "human_label_distribution": {
+      "neutral": 25,
+      "positive": 5
+    },
+    "label_order": [
+      "negative",
+      "neutral",
+      "positive"
+    ],
+    "finbert": {
+      "accuracy": 0.7333333333333333,
+      "macro_f1": 0.35407407407407404,
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          21,
+          3
+        ],
+        [
+          0,
+          4,
+          1
+        ]
+      ]
+    },
+    "keyword_baseline": {
+      "accuracy": 0.8666666666666667,
+      "macro_f1": 0.4197530864197531,
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          25,
+          0
+        ],
+        [
+          0,
+          4,
+          1
+        ]
+      ]
+    },
+    "majority_baseline": {
+      "predicted_label": "neutral",
+      "accuracy": 0.8333333333333334,
+      "macro_f1": 0.30303030303030304,
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          25,
+          0
+        ],
+        [
+          0,
+          5,
+          0
+        ]
+      ]
+    },
+    "limitation": "Labels for the 30-headline sample were AI-assisted and are not an independent human evaluation. The sample also contains no negative labels."
+  },
+  "rag_citation_evaluation": {
+    "status": "completed",
+    "citations_checked": 3,
+    "valid_citations": 3,
+    "citation_integrity_rate": 1.0,
+    "checks": [
+      {
+        "citation": "N2",
+        "exists_in_evidence": true,
+        "has_source": true,
+        "has_verifiable_url": true
+      },
+      {
+        "citation": "N4",
+        "exists_in_evidence": true,
+        "has_source": true,
+        "has_verifiable_url": true
+      },
+      {
+        "citation": "N5",
+        "exists_in_evidence": true,
+        "has_source": true,
+        "has_verifiable_url": true
+      }
+    ],
+    "scope_note": "This verifies traceability, not whether a human agrees with the interpretation."
+  },
+  "guardrail_evaluation": {
+    "passed": 6,
+    "total": 6,
+    "pass_rate": 1.0,
+    "scenarios": [
+      {
+        "scenario": "oversized_position_blocked",
+        "passed": true,
+        "detail": "Requested position 30.0% exceeds the 20.0% cap."
+      },
+      {
+        "scenario": "excessive_loss_blocked",
+        "passed": true,
+        "detail": "Estimated loss 5.0% exceeds the 3.0% cap."
+      },
+      {
+        "scenario": "zero_account_value_blocked",
+        "passed": true,
+        "detail": "Account value must be greater than zero."
+      },
+      {
+        "scenario": "negative_limit_blocked",
+        "passed": true,
+        "detail": "Risk settings must be finite non-negative numbers.; Requested position 10.0% exceeds the -1.0% cap."
+      },
+      {
+        "scenario": "non_finite_limit_blocked",
+        "passed": true,
+        "detail": "Risk settings must be finite non-negative numbers."
+      },
+      {
+        "scenario": "no_execution_without_confirmation",
+        "passed": true,
+        "detail": "stop_without_execution"
+      }
+    ]
+  },
+  "backtest_evaluation": {
+    "observations": 90,
+    "strategy_return": 0.15086237377403666,
+    "buy_hold_return": 0.09284638418475133,
+    "coin_flip_mean_return": -0.01172699294008271,
+    "strategy_max_drawdown": -0.1104719557095486,
+    "buy_hold_max_drawdown": -0.12706222175450288,
+    "coin_flip_mean_max_drawdown": -0.11255532805587506,
+    "signal_counts": {
+      "HOLD": 82,
+      "BUY": 5,
+      "SELL": 3
+    },
+    "coin_flip_runs": 500
+  }
+}

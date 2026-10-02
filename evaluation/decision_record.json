@@ -1,0 +1,45 @@
+{
+  "ticker": "AAPL",
+  "price": 333.0199890136719,
+  "rsi": 54.372471701935744,
+  "sentiment_score": -0.14919901955872775,
+  "signal": "HOLD",
+  "rationale": "The rule produced HOLD: aggregate ProsusAI/finbert sentiment score -0.149, 14-day RSI 54.4. Supporting retrieved evidence: [N2], [N4], [N5]. This is a simulated educational signal, not financial advice.",
+  "evidence": [
+    {
+      "document_id": "N2",
+      "source": "Benzinga",
+      "text": "Performance Comparison: Apple And Competitors In Technology Hardware, Storage & Peripherals Industry",
+      "url": "https://www.benzinga.com/insights/news/26/06/53188423/performance-comparison-apple-and-competitors-in-technology-hardware-storage-amp-peripherals-industr",
+      "retrieval_score": 0.934349220059812
+    },
+    {
+      "document_id": "N4",
+      "source": "BGR",
+      "text": "Can You Use Apple Music On An iPod?",
+      "url": "https://www.bgr.com/2191585/can-you-use-apple-music-on-ipod/",
+      "retrieval_score": 0.7321809985532372
+    },
+    {
+      "document_id": "N5",
+      "source": "The Globe and Mail",
+      "text": "The Zacks Analyst Blog Highlights Apple, Netflix and Disney",
+      "url": "https://www.theglobeandmail.com/investing/markets/stocks/DIS/pressreleases/2467357/the-zacks-analyst-blog-highlights-apple-netflix-and-disney/",
+      "retrieval_score": 0.6983483525165028
+    }
+  ],
+  "guardrail_passed": true,
+  "guardrail_reasons": [],
+  "tool_trace": [
+    "validate_market_data",
+    "calculate_rsi_python",
+    "analyse_headlines_ProsusAI/finbert",
+    "apply_deterministic_signal_rule",
+    "retrieve_grounding_evidence",
+    "generate_grounded_template_explanation",
+    "apply_non_ai_guardrails",
+    "request_human_confirmation",
+    "stop_without_execution"
+  ],
+  "executed": false
+}

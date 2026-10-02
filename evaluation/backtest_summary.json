@@ -1,0 +1,15 @@
+{
+  "observations": 90,
+  "strategy_return": 0.15086237377403666,
+  "buy_hold_return": 0.09284638418475133,
+  "coin_flip_mean_return": -0.01172699294008271,
+  "strategy_max_drawdown": -0.1104719557095486,
+  "buy_hold_max_drawdown": -0.12706222175450288,
+  "coin_flip_mean_max_drawdown": -0.11255532805587506,
+  "signal_counts": {
+    "HOLD": 82,
+    "BUY": 5,
+    "SELL": 3
+  },
+  "coin_flip_runs": 500
+}
