@@ -4,11 +4,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import asdict
 from pathlib import Path
 
 from backtest import fetch_aapl_prices, load_dated_news, run_backtest
-from investment_agent import FinBERTSentiment, InvestmentAgent, KeywordSentiment, RiskLimits
+from investment_agent import (
+    FinBERTSentiment,
+    HuggingFaceGroundedExplainer,
+    InvestmentAgent,
+    KeywordSentiment,
+    OpenRouterGroundedExplainer,
+    RiskLimits,
+)
+from news_source import load_local_env
 
 
 ROOT = Path(__file__).parent
@@ -29,8 +38,29 @@ def _headlines(news):
 
 
 def main() -> None:
+    load_local_env(ROOT / ".env")
     parser = argparse.ArgumentParser(description="Small human-in-the-loop AAPL decision agent")
     parser.add_argument("--demo-sentiment", action="store_true", help="Use transparent offline fallback")
+    parser.add_argument(
+        "--template-explanation",
+        action="store_true",
+        help="Disable the LLM and use the deterministic evidence template",
+    )
+    parser.add_argument(
+        "--llm-model",
+        default=os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
+        help="OpenRouter model used only for evidence commentary",
+    )
+    parser.add_argument(
+        "--local-llm",
+        action="store_true",
+        help="Use the local Hugging Face explanation model instead of OpenRouter",
+    )
+    parser.add_argument(
+        "--local-llm-model",
+        default=os.getenv("LOCAL_LLM_MODEL", "Qwen/Qwen2.5-0.5B-Instruct"),
+        help="Local Hugging Face model used with --local-llm",
+    )
     parser.add_argument("--news", default=str(DEFAULT_NEWS), help="Dated AAPL news CSV")
     parser.add_argument("--no-backtest", action="store_true")
     parser.add_argument("--yes", action="store_true", help="Confirm simulation non-interactively")
@@ -65,12 +95,25 @@ def main() -> None:
         estimated_loss_pct=args.estimated_loss_pct,
         max_loss_pct=args.max_loss_pct,
     )
-    agent = InvestmentAgent(model)
+    if args.template_explanation:
+        explainer = None
+    elif args.local_llm:
+        explainer = HuggingFaceGroundedExplainer(args.local_llm_model)
+    else:
+        openrouter_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+        if not openrouter_key:
+            raise SystemExit(
+                "OPENROUTER_API_KEY is missing. Add it to .env, or run with "
+                "--local-llm / --template-explanation."
+            )
+        explainer = OpenRouterGroundedExplainer(openrouter_key, args.llm_model)
+    agent = InvestmentAgent(model, explainer=explainer)
     decision = agent.run(prices.rename(columns={"Date": "Date"}), _headlines(news), limits)
 
     print(f"\nSignal: {decision.signal}")
     print(f"Price: ${decision.price:.2f} | RSI(14): {decision.rsi:.1f}")
     print(f"Aggregate sentiment: {decision.sentiment_score:+.3f}")
+    print(f"Explanation mode: {decision.explanation_mode}")
     print(decision.rationale)
     if decision.guardrail_reasons:
         print("Guardrail blocked the action:", "; ".join(decision.guardrail_reasons))

@@ -11,14 +11,15 @@ It is an educational simulation, not investment advice.
 4. Calculates 14-day RSI in deterministic Python.
 5. Applies a fixed Python rule to return `BUY`, `HOLD`, or `SELL`.
 6. Retrieves the three most relevant real headlines using a local TF-IDF RAG layer.
-7. Generates a cited, grounded explanation.
+7. Uses a constrained OpenRouter LLM to word the retrieved evidence, then validates every citation and blocks attempts to alter the signal or introduce numbers.
 8. Applies non-AI position-size and loss guardrails.
 9. Requires `Y`, `N`, or `V` human input before simulated execution.
 10. Evaluates the rule over 90 trading days against buy-and-hold and a
     500-run seeded fair-coin baseline (heads = AAPL, tails = cash).
 
-FinBERT and retrieval are the AI components. RSI, signal thresholds, portfolio
-arithmetic, guardrails, and execution are not delegated to an LLM.
+FinBERT, retrieval and the constrained explanation model are the AI components.
+RSI, signal thresholds, portfolio arithmetic, guardrails, and execution are not
+delegated to the explanation LLM.
 
 ## Windows setup
 
@@ -30,10 +31,12 @@ py -m venv .venv
 ```
 
 Before downloading, copy `.env.example` to a new file named `.env` and replace
-the placeholder with the free Alpha Vantage key:
+the placeholders with your Alpha Vantage and OpenRouter keys:
 
 ```text
 ALPHA_VANTAGE_API_KEY=your_real_key
+OPENROUTER_API_KEY=your_openrouter_key
+OPENROUTER_MODEL=openai/gpt-4o-mini
 ```
 
 Never share or commit `.env`. The downloader makes one API request for AAPL
@@ -48,8 +51,34 @@ publication date and creates:
 Alpha Vantage's supplied sentiment is discarded. The saved real headlines are
 analysed again by this project's FinBERT model.
 
-The first FinBERT run downloads `ProsusAI/finbert`, so it is slower and needs an
-internet connection. Later runs use the local model cache.
+The first full run downloads `ProsusAI/finbert`; later runs use the local model
+cache. The constrained explanation is requested through OpenRouter using the
+fixed model in `OPENROUTER_MODEL`, so a working internet connection is required. The explanation LLM
+receives only retrieved headline text and source names. It cannot calculate RSI,
+select BUY/HOLD/SELL, change risk limits or execute an action. Its output is
+accepted only when all citations refer to retrieved items, every sentence is
+cited, no signal word or numerical claim is introduced, and the output remains
+within the length limit. Invalid output falls back to a deterministic template.
+
+An OpenRouter/network/model failure also falls back safely to the deterministic
+template. To demonstrate the non-LLM mode explicitly:
+
+```powershell
+.\.venv\Scripts\python.exe mvp.py --template-explanation
+```
+
+To use another fixed OpenRouter model, set `OPENROUTER_MODEL` in `.env` or pass
+`--llm-model`. Avoid automatic model routing in reported experiments so that the
+model identity remains reproducible.
+
+The original local explanation model remains available when an API is not
+appropriate:
+
+```powershell
+.\.venv\Scripts\python.exe mvp.py --local-llm
+```
+
+Set `LOCAL_LLM_MODEL` in `.env` or pass `--local-llm-model` to change it.
 
 For a fast offline demonstration of the workflow only:
 
@@ -117,7 +146,8 @@ reproducible comparison is the requirement.
 ```
 
 Tests cover deterministic RSI, fixed signal thresholds, guardrail blocking,
-human confirmation, traceable RAG retrieval, and the 90-day baseline comparison.
+human confirmation, traceable RAG retrieval, constrained LLM validation and
+fallback, and the 90-day baseline comparison.
 
 ## Quality evaluation
 
