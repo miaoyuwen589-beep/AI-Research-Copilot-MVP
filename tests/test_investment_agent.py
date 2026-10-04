@@ -1,15 +1,20 @@
 import numpy as np
 import pandas as pd
+import json
+from unittest.mock import patch
 
 from backtest import run_backtest
 from investment_agent import (
     InvestmentAgent,
     KeywordSentiment,
+    OpenRouterGroundedExplainer,
     RiskLimits,
+    build_grounded_rationale,
     calculate_rsi,
     check_guardrails,
     retrieve_news_evidence,
     rule_signal,
+    validate_grounded_commentary,
 )
 from news_source import parse_alpha_vantage_feed
 
@@ -159,3 +164,75 @@ def test_rag_retrieval_returns_traceable_real_news():
     assert len(evidence) == 2
     assert evidence[0]["document_id"] == "N1"
     assert all(item["url"].startswith("https://") for item in evidence)
+
+
+class ValidFakeExplainer:
+    name = "test-grounded-llm"
+
+    def generate(self, evidence):
+        return "The retrieved headlines describe mixed Apple updates [N1] and routine coverage [N2]."
+
+
+class UnsafeFakeExplainer:
+    name = "test-unsafe-llm"
+
+    def generate(self, evidence):
+        return "BUY will rise 10 percent with guaranteed profit [N1]."
+
+
+def test_constrained_llm_explanation_is_validated_and_cannot_change_signal():
+    evidence = [
+        {"document_id": "N1", "source": "A", "text": "Apple update", "url": "https://example.com/a"},
+        {"document_id": "N2", "source": "B", "text": "Apple coverage", "url": "https://example.com/b"},
+    ]
+    rationale, mode, trace = build_grounded_rationale(
+        "HOLD", "test-sentiment", 0.0, 50.0, evidence, ValidFakeExplainer()
+    )
+    assert mode == "llm_validated"
+    assert rationale.startswith("The rule produced HOLD")
+    assert "[N1]" in rationale and "[N2]" in rationale
+    assert "validate_llm_explanation" in trace
+
+
+def test_unsafe_llm_output_falls_back_to_deterministic_template():
+    evidence = [
+        {"document_id": "N1", "source": "A", "text": "Apple update", "url": "https://example.com/a"}
+    ]
+    valid, reasons = validate_grounded_commentary(UnsafeFakeExplainer().generate(evidence), evidence)
+    assert not valid
+    assert reasons
+    rationale, mode, trace = build_grounded_rationale(
+        "HOLD", "test-sentiment", 0.0, 50.0, evidence, UnsafeFakeExplainer()
+    )
+    assert mode == "template_fallback"
+    assert "fallback_to_grounded_template" in trace
+    assert rationale.startswith("The rule produced HOLD")
+
+
+class FakeOpenRouterResponse:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return None
+
+    def read(self):
+        return json.dumps(
+            {"choices": [{"message": {"content": "Apple issued an update [N1]."}}]}
+        ).encode("utf-8")
+
+
+def test_openrouter_explainer_sends_constrained_deterministic_request():
+    evidence = [
+        {"document_id": "N1", "source": "A", "text": "Apple issued an update"}
+    ]
+    explainer = OpenRouterGroundedExplainer("secret-test-key", "provider/test-model")
+    with patch("investment_agent.urlopen", return_value=FakeOpenRouterResponse()) as mocked:
+        result = explainer.generate(evidence)
+    request = mocked.call_args.args[0]
+    payload = json.loads(request.data.decode("utf-8"))
+    assert result == "Apple issued an update [N1]."
+    assert payload["model"] == "provider/test-model"
+    assert payload["temperature"] == 0
+    assert "secret-test-key" not in request.data.decode("utf-8")
+    assert request.get_header("Authorization") == "Bearer secret-test-key"
