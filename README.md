@@ -3,6 +3,54 @@
 This is a deliberately small, human-in-the-loop Agent for one stock (`AAPL`).
 It is an educational simulation, not investment advice.
 
+## Product documentation
+
+**Persona.** A retail investor or finance student who wants a concise AAPL
+research signal, needs to inspect the supporting evidence, and retains final
+control over every simulated action.
+
+**Inputs.** Dated AAPL headlines, daily closing prices, configurable position
+and loss limits, and `Y`, `N`, or `V` human input.
+
+**Outputs.** A simulated `BUY`, `HOLD`, or `SELL` signal; aggregate FinBERT
+sentiment; 14-day RSI; three traceable news citations; a validated explanation;
+and a guardrail decision. The project never submits a real order.
+
+### High-level architecture
+
+```text
+AAPL headlines ──> FinBERT sentiment ─┐
+                                      ├─> Fixed signal rule ─> Guardrails ─> Human Y/N/V
+AAPL prices ─────> 14-day RSI ────────┘          │
+                                                 └─> TF-IDF retrieval
+                                                       │
+                                                       v
+                                             Constrained OpenRouter LLM
+                                                       │
+                                                       v
+                                             Citation/safety validator
+                                             or deterministic fallback
+```
+
+The explanation LLM is outside the signal and execution path. It can word
+retrieved evidence but cannot calculate RSI, change `BUY/HOLD/SELL`, alter risk
+limits, or bypass confirmation.
+
+### Metrics targeted and reached
+
+| Metric | Target | Reached |
+|---|---|---|
+| Balanced sentiment macro F1 | Beat the transparent keyword baseline | **71.36% vs 23.15%** |
+| Citation integrity | Every citation resolves to stored evidence | **100% (3/3)** |
+| Guardrail scenarios | All defined prohibited cases blocked | **100% (6/6)** |
+| Automated tests | Entire suite passes | **12/12** |
+| Backtest reporting | Reproducible comparison, not promised outperformance | **15.09% strategy vs 9.28% buy-and-hold** |
+
+See [`DATA.md`](DATA.md) for data provenance and [`EVALUATION.md`](EVALUATION.md)
+for evaluation design, results, and limitations. [`DEMO.md`](DEMO.md) provides
+the five-minute face-and-screen recording sequence. The final course report is
+stored in `report/AAPL_Investment_Copilot_Project_Report.docx`.
+
 ## What the Agent does
 
 1. Downloads real, dated AAPL headlines from Alpha Vantage and saves source URLs.
@@ -210,8 +258,13 @@ AI_Research_Copilot/
 ├── investment_agent.py
 ├── backtest.py
 ├── data/
-│   ├── aapl_news_real.csv       # created locally; not included in the ZIP
+│   ├── aapl_news_real.csv       # checked-in research corpus
 │   └── aapl_news_real.metadata.json
+├── DATA.md
+├── EVALUATION.md
+├── DEMO.md
+├── report/
+│   └── AAPL_Investment_Copilot_Project_Report.docx
 ├── tests/
 │   └── test_investment_agent.py
 ├── requirements.txt
