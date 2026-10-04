@@ -3,6 +3,22 @@
 This is a deliberately small, human-in-the-loop Agent for one stock (`AAPL`).
 It is an educational simulation, not investment advice.
 
+## Requirements and API keys
+
+- Python 3.11 or 3.12 is recommended.
+- The first FinBERT run requires internet access to download the model.
+- OpenRouter mode requires the reviewer to provide their own
+  `OPENROUTER_API_KEY` in a local `.env` file.
+- The submitted repository does not contain any private API keys.
+- An Alpha Vantage key is only required to download a fresh news dataset.
+  The checked-in dataset can be used without this key.
+
+### Run without API keys
+
+The core workflow can be demonstrated without API keys using:
+
+python mvp.py --template-explanation
+
 ## Product documentation
 
 **Persona.** A retail investor or finance student who wants a concise AAPL
