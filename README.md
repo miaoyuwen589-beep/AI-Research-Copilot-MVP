@@ -164,16 +164,35 @@ For each headline, enter `P`, `U`, or `N` for positive, neutral, or negative.
 Use the criteria in `LABEL_GUIDE.md` and do not inspect model predictions first.
 Run `--prepare-labels` again after every news download. Each label file contains
 a dataset ID, and evaluation stops if labels belong to an older news file.
-The included 30-headline labels were AI-assisted rather than produced by an
-independent human reviewer, and the supplied evaluation report identifies this
-as a limitation.
-The final command compares FinBERT with a transparent keyword baseline and a
-majority-class baseline using accuracy and macro F1. It also reports citation
-integrity and six deterministic guardrail tests. Outputs are written to:
+The included 30-headline random-sample labels were AI-assisted rather than
+produced by an independent human reviewer. That sample reflects the collected
+news mix, but it contains no negative labels and therefore cannot measure
+negative-class recall.
+
+To address that coverage gap without changing the representative sample, the
+repository also includes a separate 30-headline balanced challenge set with 10
+negative, 10 neutral and 10 positive examples. It was selected from a broader
+2025 Alpha Vantage AAPL news pool without consulting FinBERT or the provider's
+sentiment field. Because the classes were deliberately balanced, its results
+measure class discrimination rather than real-world prevalence. Review all
+included challenge labels interactively before treating them as independent
+human labels:
+
+```powershell
+.\.venv\Scripts\python.exe evaluate_quality.py --review-balanced-labels
+.\.venv\Scripts\python.exe evaluate_quality.py --run
+```
+
+The final command evaluates both datasets against a transparent keyword
+baseline and a majority-class baseline using accuracy and macro F1. It also
+reports citation integrity and six deterministic guardrail tests. Outputs are
+written to:
 
 - `evaluation/evaluation_report.json`;
 - `evaluation/sentiment_predictions.csv`;
-- `evaluation/human_labels.csv`.
+- `evaluation/balanced_sentiment_predictions.csv`;
+- `evaluation/human_labels.csv`;
+- `evaluation/balanced_human_labels.csv`.
 
 ## Structure
 

@@ -25,15 +25,17 @@ from investment_agent import (
 
 ROOT = Path(__file__).parent
 NEWS_PATH = ROOT / "data" / "aapl_news_real.csv"
+CHALLENGE_NEWS_PATH = ROOT / "data" / "aapl_news_challenge_pool.csv"
 EVALUATION_DIR = ROOT / "evaluation"
 LABEL_PATH = EVALUATION_DIR / "human_labels.csv"
+BALANCED_LABEL_PATH = EVALUATION_DIR / "balanced_human_labels.csv"
 REPORT_PATH = EVALUATION_DIR / "evaluation_report.json"
 LABELS = ("negative", "neutral", "positive")
 
 
-def current_news_dataset_id() -> str:
+def news_dataset_id(path: Path = NEWS_PATH) -> str:
     """Bind human labels to the exact news file used to prepare them."""
-    return hashlib.sha256(NEWS_PATH.read_bytes()).hexdigest()[:16]
+    return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
 
 
 def prepare_labels(sample_size: int = 30) -> pd.DataFrame:
@@ -47,51 +49,75 @@ def prepare_labels(sample_size: int = 30) -> pd.DataFrame:
     sample = news.sample(n=sample_size, random_state=6201).sort_values(["date", "headline"])
     sample = sample[["date", "headline", "source", "url"]].reset_index(drop=True)
     sample.insert(0, "item_id", np.arange(1, len(sample) + 1))
-    sample.insert(1, "news_dataset_id", current_news_dataset_id())
+    sample.insert(1, "news_dataset_id", news_dataset_id())
     sample["human_label"] = ""
     EVALUATION_DIR.mkdir(exist_ok=True)
     sample.to_csv(LABEL_PATH, index=False, encoding="utf-8-sig")
     return sample
 
 
-def label_interactively() -> None:
-    if not LABEL_PATH.exists():
-        prepare_labels()
-    labels = pd.read_csv(LABEL_PATH, keep_default_na=False)
+def label_interactively(path: Path = LABEL_PATH, review_all: bool = False) -> None:
+    if not path.exists():
+        if path == LABEL_PATH:
+            prepare_labels()
+        else:
+            raise SystemExit(f"Balanced label file not found: {path}")
+    labels = pd.read_csv(path, keep_default_na=False)
     mapping = {"p": "positive", "u": "neutral", "n": "negative"}
     for index, row in labels.iterrows():
-        if row["human_label"] in LABELS:
+        if not review_all and row["human_label"] in LABELS:
             continue
         print(f"\n[{index + 1}/{len(labels)}] {row['headline']}")
         print(f"Source: {row['source']}")
+        current = str(row.get("human_label", "")).strip().lower()
+        if current in LABELS:
+            print(f"Current label: {current}")
         while True:
-            answer = input("P=positive, U=neutral, N=negative, Q=save and quit: ").strip().lower()
+            answer = input(
+                "P=positive, U=neutral, N=negative, Enter=keep, Q=save and quit: "
+            ).strip().lower()
             if answer == "q":
-                labels.to_csv(LABEL_PATH, index=False, encoding="utf-8-sig")
-                print(f"Progress saved to {LABEL_PATH}")
+                labels.to_csv(path, index=False, encoding="utf-8-sig")
+                print(f"Progress saved to {path}")
                 return
+            if answer == "" and current in LABELS:
+                break
             if answer in mapping:
                 labels.at[index, "human_label"] = mapping[answer]
-                labels.to_csv(LABEL_PATH, index=False, encoding="utf-8-sig")
+                labels.to_csv(path, index=False, encoding="utf-8-sig")
                 break
-    print(f"All labels saved to {LABEL_PATH}")
+    labels.to_csv(path, index=False, encoding="utf-8-sig")
+    print(f"All labels saved to {path}")
 
 
-def evaluate_sentiment() -> tuple[dict, pd.DataFrame]:
-    if not LABEL_PATH.exists():
-        raise SystemExit("Prepare labels first: python evaluate_quality.py --prepare-labels")
-    labels = pd.read_csv(LABEL_PATH, keep_default_na=False)
-    expected_dataset_id = current_news_dataset_id()
+def evaluate_sentiment_file(
+    label_path: Path,
+    news_path: Path,
+    predictions_path: Path,
+    design: str,
+    limitation: str,
+    required_distribution: dict[str, int] | None = None,
+) -> tuple[dict, pd.DataFrame]:
+    if not label_path.exists():
+        raise SystemExit(f"Label file not found: {label_path}")
+    if not news_path.exists():
+        raise SystemExit(f"News dataset not found: {news_path}")
+    labels = pd.read_csv(label_path, keep_default_na=False)
+    expected_dataset_id = news_dataset_id(news_path)
     if "news_dataset_id" not in labels.columns or set(labels["news_dataset_id"]) != {expected_dataset_id}:
         raise SystemExit(
-            "Human labels belong to an older news dataset. Run: "
-            "python evaluate_quality.py --prepare-labels"
+            f"Labels in {label_path.name} do not match {news_path.name}."
         )
     labels["human_label"] = labels["human_label"].str.lower().str.strip()
     invalid = labels[~labels["human_label"].isin(LABELS)]
     if not invalid.empty:
         raise SystemExit(
-            f"{len(invalid)} human labels are unfinished. Run: python evaluate_quality.py --label"
+            f"{len(invalid)} labels are unfinished in {label_path.name}."
+        )
+    distribution = dict(Counter(labels["human_label"]))
+    if required_distribution is not None and distribution != required_distribution:
+        raise SystemExit(
+            f"{label_path.name} must contain {required_distribution}; found {distribution}."
         )
     finbert = FinBERTSentiment()
     keyword = KeywordSentiment()
@@ -115,19 +141,51 @@ def evaluate_sentiment() -> tuple[dict, pd.DataFrame]:
 
     result = {
         "sample_size": len(labels),
-        "sampling_seed": 6201,
-        "human_label_distribution": dict(Counter(y_true)),
+        "evaluation_design": design,
+        "human_label_distribution": distribution,
         "label_order": list(LABELS),
         "finbert": metrics("finbert_prediction"),
         "keyword_baseline": metrics("keyword_prediction"),
         "majority_baseline": {"predicted_label": majority_label, **metrics("majority_prediction")},
-        "limitation": (
-            "Labels for the 30-headline sample were AI-assisted and are not an "
-            "independent human evaluation. The sample also contains no negative labels."
-        ),
+        "limitation": limitation,
     }
-    labels.to_csv(EVALUATION_DIR / "sentiment_predictions.csv", index=False, encoding="utf-8-sig")
+    labels.to_csv(predictions_path, index=False, encoding="utf-8-sig")
     return result, labels
+
+
+def evaluate_sentiment() -> tuple[dict, pd.DataFrame]:
+    result, labels = evaluate_sentiment_file(
+        LABEL_PATH,
+        NEWS_PATH,
+        EVALUATION_DIR / "sentiment_predictions.csv",
+        design="Fixed-seed random sample from the 90-day evaluation-news dataset.",
+        limitation=(
+            "Labels were AI-assisted rather than independently human-produced. The random "
+            "sample reflects the collected news mix but contains no negative labels, so it "
+            "cannot measure negative-class recall."
+        ),
+    )
+    result["sampling_seed"] = 6201
+    return result, labels
+
+
+def evaluate_balanced_challenge() -> tuple[dict, pd.DataFrame]:
+    return evaluate_sentiment_file(
+        BALANCED_LABEL_PATH,
+        CHALLENGE_NEWS_PATH,
+        EVALUATION_DIR / "balanced_sentiment_predictions.csv",
+        design=(
+            "Purposive 30-headline challenge set from a separate 2025 Alpha Vantage pool, "
+            "with 10 negative, 10 neutral and 10 positive examples. Selection and labels "
+            "were completed without consulting FinBERT or Alpha Vantage sentiment."
+        ),
+        limitation=(
+            "This class-balanced set is deliberately non-representative and its labels were "
+            "AI-assisted. Use it to compare class discrimination, not to estimate real-world "
+            "headline prevalence or production accuracy."
+        ),
+        required_distribution={"negative": 10, "neutral": 10, "positive": 10},
+    )
 
 
 def evaluate_guardrails() -> dict:
@@ -215,6 +273,9 @@ def run_full_evaluation() -> dict:
         "rag_citation_evaluation": evaluate_citations(),
         "guardrail_evaluation": evaluate_guardrails(),
     }
+    if BALANCED_LABEL_PATH.exists() and CHALLENGE_NEWS_PATH.exists():
+        balanced, _balanced_predictions = evaluate_balanced_challenge()
+        report["balanced_sentiment_challenge"] = balanced
     backtest_path = EVALUATION_DIR / "backtest_summary.json"
     if backtest_path.exists():
         report["backtest_evaluation"] = json.loads(backtest_path.read_text(encoding="utf-8"))
@@ -226,6 +287,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate FinBERT, RAG citations and guardrails")
     parser.add_argument("--prepare-labels", action="store_true")
     parser.add_argument("--label", action="store_true")
+    parser.add_argument("--review-balanced-labels", action="store_true")
     parser.add_argument("--run", action="store_true")
     parser.add_argument("--sample-size", type=int, default=30)
     args = parser.parse_args()
@@ -235,6 +297,9 @@ def main() -> None:
         print("Next: python evaluate_quality.py --label")
     elif args.label:
         label_interactively()
+        print("Next: python evaluate_quality.py --run")
+    elif args.review_balanced_labels:
+        label_interactively(BALANCED_LABEL_PATH, review_all=True)
         print("Next: python evaluate_quality.py --run")
     elif args.run:
         report = run_full_evaluation()
