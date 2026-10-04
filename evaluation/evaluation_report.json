@@ -1,7 +1,7 @@
 {
   "sentiment_model_evaluation": {
     "sample_size": 30,
-    "sampling_seed": 6201,
+    "evaluation_design": "Fixed-seed random sample from the 90-day evaluation-news dataset.",
     "human_label_distribution": {
       "neutral": 25,
       "positive": 5
@@ -75,7 +75,8 @@
         ]
       ]
     },
-    "limitation": "Labels for the 30-headline sample were AI-assisted and are not an independent human evaluation. The sample also contains no negative labels."
+    "limitation": "Labels were AI-assisted rather than independently human-produced. The random sample reflects the collected news mix but contains no negative labels, so it cannot measure negative-class recall.",
+    "sampling_seed": 6201
   },
   "rag_citation_evaluation": {
     "status": "completed",
@@ -140,6 +141,85 @@
         "detail": "stop_without_execution"
       }
     ]
+  },
+  "balanced_sentiment_challenge": {
+    "sample_size": 30,
+    "evaluation_design": "Purposive 30-headline challenge set from a separate 2025 Alpha Vantage pool, with 10 negative, 10 neutral and 10 positive examples. Selection and labels were completed without consulting FinBERT or Alpha Vantage sentiment.",
+    "human_label_distribution": {
+      "negative": 10,
+      "neutral": 10,
+      "positive": 10
+    },
+    "label_order": [
+      "negative",
+      "neutral",
+      "positive"
+    ],
+    "finbert": {
+      "accuracy": 0.7333333333333333,
+      "macro_f1": 0.7135531135531137,
+      "confusion_matrix": [
+        [
+          8,
+          2,
+          0
+        ],
+        [
+          0,
+          10,
+          0
+        ],
+        [
+          2,
+          4,
+          4
+        ]
+      ]
+    },
+    "keyword_baseline": {
+      "accuracy": 0.36666666666666664,
+      "macro_f1": 0.23154623154623155,
+      "confusion_matrix": [
+        [
+          1,
+          9,
+          0
+        ],
+        [
+          0,
+          10,
+          0
+        ],
+        [
+          0,
+          10,
+          0
+        ]
+      ]
+    },
+    "majority_baseline": {
+      "predicted_label": "negative",
+      "accuracy": 0.3333333333333333,
+      "macro_f1": 0.16666666666666666,
+      "confusion_matrix": [
+        [
+          10,
+          0,
+          0
+        ],
+        [
+          10,
+          0,
+          0
+        ],
+        [
+          10,
+          0,
+          0
+        ]
+      ]
+    },
+    "limitation": "This class-balanced set is deliberately non-representative and its labels were AI-assisted. Use it to compare class discrimination, not to estimate real-world headline prevalence or production accuracy."
   },
   "backtest_evaluation": {
     "observations": 90,
