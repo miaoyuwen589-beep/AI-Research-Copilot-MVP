@@ -174,14 +174,18 @@ repository also includes a separate 30-headline balanced challenge set with 10
 negative, 10 neutral and 10 positive examples. It was selected from a broader
 2025 Alpha Vantage AAPL news pool without consulting FinBERT or the provider's
 sentiment field. Because the classes were deliberately balanced, its results
-measure class discrimination rather than real-world prevalence. Review all
-included challenge labels interactively before treating them as independent
-human labels:
+measure class discrimination rather than real-world prevalence. To repeat or
+audit the label review interactively:
 
 ```powershell
 .\.venv\Scripts\python.exe evaluate_quality.py --review-balanced-labels
 .\.venv\Scripts\python.exe evaluate_quality.py --run
 ```
+
+The included balanced labels have now been manually reviewed by one human
+annotator. They are therefore reported as single-annotator human-reviewed
+labels, not as independently double-annotated ground truth. No inter-annotator
+agreement score is available.
 
 The final command evaluates both datasets against a transparent keyword
 baseline and a majority-class baseline using accuracy and macro F1. It also

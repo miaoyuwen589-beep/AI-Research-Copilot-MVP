@@ -177,12 +177,14 @@ def evaluate_balanced_challenge() -> tuple[dict, pd.DataFrame]:
         design=(
             "Purposive 30-headline challenge set from a separate 2025 Alpha Vantage pool, "
             "with 10 negative, 10 neutral and 10 positive examples. Selection and labels "
-            "were completed without consulting FinBERT or Alpha Vantage sentiment."
+            "were completed without consulting FinBERT or Alpha Vantage sentiment, then "
+            "manually reviewed by one human annotator."
         ),
         limitation=(
-            "This class-balanced set is deliberately non-representative and its labels were "
-            "AI-assisted. Use it to compare class discrimination, not to estimate real-world "
-            "headline prevalence or production accuracy."
+            "This class-balanced set is deliberately non-representative and was reviewed by "
+            "only one human annotator, so no inter-annotator agreement is available. Use it "
+            "to compare class discrimination, not to estimate real-world headline prevalence "
+            "or production accuracy."
         ),
         required_distribution={"negative": 10, "neutral": 10, "positive": 10},
     )
