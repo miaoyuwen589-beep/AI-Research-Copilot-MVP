@@ -1,0 +1,20 @@
+{
+  "provider": "Alpha Vantage NEWS_SENTIMENT",
+  "ticker": "AAPL",
+  "requested_start_date": "2025-01-01",
+  "requested_end_date": "2025-12-31",
+  "downloaded_at_utc": "2026-10-04T07:11:19.567062+00:00",
+  "api_feed_count": 1000,
+  "usable_before_deduplication": 172,
+  "after_deduplication": 170,
+  "final_headline_count": 162,
+  "max_headlines_per_day": 20,
+  "minimum_aapl_relevance_score": 0.35,
+  "rejected_counts": {
+    "missing_aapl_tag": 0,
+    "missing_or_low_relevance": 23,
+    "no_direct_apple_reference": 805
+  },
+  "selection_rule": "Require an explicit AAPL ticker tag, AAPL relevance at or above the threshold, and a direct Apple entity in the title; then keep the five highest-relevance unique headlines per publication date",
+  "provider_sentiment_used": false
+}
